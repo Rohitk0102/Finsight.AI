@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Stock Recommender</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            background-color: #f4f7f6;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start; /* Align top */
+            padding: 30px 15px;
+            min-height: 100vh;
+        }
+        .container {
+            background-color: #fff;
+            padding: 30px 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            width: 90%;
+            max-width: 700px; /* Slightly wider */
+        }
+        h2 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 25px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 600; /* Bolder labels */
+        }
+        select, input[type="number"], input[type="text"] {
+            width: 100%;
+            padding: 10px 12px; /* Adjusted padding */
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 1rem; /* Ensure readable font size */
+        }
+        input[type="range"] {
+            width: 100%;
+            cursor: pointer;
+            margin-top: 5px;
+        }
+        .range-value {
+            display: inline-block;
+            margin-left: 10px;
+            font-weight: bold;
+            color: #007bff;
+            min-width: 25px; /* Ensure space */
+            text-align: right;
+        }
+        .range-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85em; /* Slightly smaller */
+            color: #777;
+            margin-top: 3px;
+        }
+        button[type="submit"] {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            margin-top: 30px;
+            transition: background-color 0.2s ease;
+        }
+        button[type="submit"]:hover {
+            background-color: #0056b3;
+        }
+        button[type="submit"]:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        /* Results Area Styling */
+        #results-container {
+            margin-top: 30px;
+        }
+        #results-container h3 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+            border-top: 1px solid #eee;
+            padding-top: 25px;
+        }
+        .recommendation-card {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        .stock-name {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #0056b3;
+        }
+        .match-percent {
+            background-color: #28a745; /* Green */
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+        .stock-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); /* Responsive columns */
+            gap: 15px;
+            margin-bottom: 15px;
+            font-size: 0.95em;
+        }
+        .detail-item span {
+            display: block;
+            font-size: 0.8em;
+            color: #6c757d; /* Grey */
+            margin-bottom: 3px;
+            text-transform: uppercase;
+        }
+        .detail-item b {
+             color: #343a40; /* Dark grey */
+        }
+        .stock-description {
+            font-size: 0.95em;
+            color: #495057;
+            line-height: 1.5;
+            margin-top: 10px;
+        }
+        #error-area {
+            color: #dc3545;
+            margin-top: 15px;
+            font-weight: bold;
+            text-align: center;
+            padding: 10px;
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 4px;
+            display: none; /* Hidden initially */
+        }
+        .loading-indicator {
+            text-align: center;
+            padding: 20px;
+            font-style: italic;
+            color: #6c757d;
+             display: none; /* Hidden initially */
+        }
+        .disclaimer {
+            font-size: 0.8em;
+            color: #6c757d;
+            text-align: center;
+            margin-top: 30px;
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Smart Stock Recommender</h2>
+        <form id="recommendation-form">
+            <div class="form-group">
+                <label for="investment_goal">Investment Goal</label>
+                <select id="investment_goal" name="investment_goal" required>
+                    <option value="" disabled selected>-- Select Goal --</option>
+                    <option value="Growth">Growth - Focus on capital appreciation</option>
+                    <option value="Income">Income - Focus on dividends</option>
+                    <option value="Value">Value - Focus on undervalued companies</option>
+                    <option value="Blend">Blend - Balanced approach</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="risk_tolerance">Risk Tolerance (<span class="range-value" id="risk-value">5</span>/10)</label>
+                <input type="range" id="risk_tolerance" name="risk_tolerance" min="1" max="10" value="5" required>
+                <div class="range-labels"><span>Conservative</span><span>Moderate</span><span>Aggressive</span></div>
+            </div>
+            <div class="form-group">
+                <label for="preferred_sector">Preferred Sector</label>
+                <select id="preferred_sector" name="preferred_sector" required>
+                    <option value="" disabled selected>-- Select Sector --</option>
+                    <option value="Technology">Technology</option>
+                    <option value="Healthcare">Healthcare</option>
+                    <option value="Financials">Financials</option>
+                    <option value="Consumer Goods">Consumer Goods</option>
+                    <option value="Energy">Energy</option>
+                    <option value="Materials">Materials</option>
+                    <option value="Industrials">Industrials</option>
+                    <option value="Utilities">Utilities</option>
+                    <option value="Real Estate">Real Estate</option>
+                    <option value="Any">Any / No Preference</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="time_horizon">Investment Time Horizon</label>
+                <select id="time_horizon" name="time_horizon" required>
+                    <option value="" disabled selected>-- Select Horizon --</option>
+                    <option value="Short Term (< 1 year)">Short Term (&lt; 1 year)</option>
+                    <option value="Medium Term (1-5 years)">Medium Term (1-5 years)</option>
+                    <option value="Long Term (5+ years)">Long Term (5+ years)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="esg_importance">ESG Importance (<span class="range-value" id="esg-value">5</span>/10)</label>
+                <input type="range" id="esg_importance" name="esg_importance" min="1" max="10" value="5" required>
+                <div class="range-labels"><span>Not Important</span><span>Somewhat</span><span>Very Important</span></div>
+            </div>
+            <button type="submit" id="submit-button">Get Recommendations</button>
+        </form>
+
+        <div id="error-area"></div> <div class="loading-indicator" id="loading">Loading recommendations...</div>
+
+        <div id="results-container">
+            </div>
+
+        <div class="disclaimer">
+            Disclaimer: These recommendations are generated based on a language model and should not be considered financial advice. Always do your own research and consult with a financial advisor before making investment decisions.
+        </div>
+
+    </div>
+
+    <script>
+        const form = document.getElementById('recommendation-form');
+        const resultsContainer = document.getElementById('results-container');
+        const errorArea = document.getElementById('error-area');
+        const loadingIndicator = document.getElementById('loading');
+        const submitButton = document.getElementById('submit-button');
+
+        // Update slider value display dynamically
+        const riskSlider = document.getElementById('risk_tolerance');
+        const riskValueSpan = document.getElementById('risk-value');
+        riskSlider.addEventListener('input', () => { riskValueSpan.textContent = riskSlider.value; });
+
+        const esgSlider = document.getElementById('esg_importance');
+        const esgValueSpan = document.getElementById('esg-value');
+        esgSlider.addEventListener('input', () => { esgValueSpan.textContent = esgSlider.value; });
+
+        // Handle Form Submission
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault(); // Prevent default page reload
+            resultsContainer.innerHTML = '<h3>Your Personalized Stock Recommendations</h3>'; // Clear previous results but keep heading
+            errorArea.style.display = 'none'; // Hide previous errors
+            errorArea.textContent = '';
+            loadingIndicator.style.display = 'block'; // Show loading indicator
+            submitButton.disabled = true; // Disable button during request
+
+            const formData = new FormData(form);
+
+            try {
+                const response = await fetch('/recommend', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json(); // Attempt to parse JSON response
+
+                if (!response.ok) {
+                    // If response is not OK, throw error using message from JSON body or default
+                    throw new Error(data.error || `Server Error: ${response.status} ${response.statusText}`);
+                }
+
+                // Check if the expected recommendations array is present
+                if (data.recommendations && Array.isArray(data.recommendations)) {
+                    displayRecommendations(data.recommendations);
+                } else if (data.error) {
+                     // Handle cases where server returns 200 OK but with an error payload
+                    throw new Error(data.error);
+                }
+                else {
+                    // Handle unexpected successful response format
+                    throw new Error("Received unexpected data format from server.");
+                }
+
+            } catch (error) {
+                console.error("Form Submission Error:", error);
+                errorArea.textContent = `Error: ${error.message || 'Could not retrieve recommendations.'}`;
+                errorArea.style.display = 'block'; // Show error message
+            } finally {
+                // Runs regardless of success or error
+                loadingIndicator.style.display = 'none'; // Hide loading indicator
+                submitButton.disabled = false; // Re-enable button
+            }
+        });
+
+        // Function to display recommendations in the UI
+        function displayRecommendations(recommendations) {
+            resultsContainer.innerHTML = '<h3>Your Personalized Stock Recommendations</h3>'; // Clear previous/loading and add heading
+
+            if (recommendations.length === 0) {
+                resultsContainer.innerHTML += '<p>No recommendations found based on your criteria.</p>';
+                return;
+            }
+
+            recommendations.forEach(stock => {
+                const card = document.createElement('div');
+                card.className = 'recommendation-card';
+
+                // Sanitize text content before inserting as HTML if necessary,
+                // but for this controlled data, direct insertion is okay.
+                card.innerHTML = `
+                    <div class="card-header">
+                        <span class="stock-name">${stock.ticker} - ${stock.name}</span>
+                        <span class="match-percent">${stock.match_percent || 'N/A'}</span>
+                    </div>
+                    <div class="stock-details">
+                        <div class="detail-item">
+                            <span>Price</span>
+                            <b>${stock.price || 'N/A'}</b>
+                        </div>
+                        <div class="detail-item">
+                            <span>P/E Ratio</span>
+                            <b>${stock.pe_ratio || 'N/A'}</b>
+                        </div>
+                        <div class="detail-item">
+                            <span>Dividend Yield</span>
+                            <b>${stock.dividend_yield || 'N/A'}</b>
+                        </div>
+                    </div>
+                    <div class="stock-description">
+                        ${stock.description || 'No description available.'}
+                    </div>
+                `;
+                resultsContainer.appendChild(card);
+            });
+        }
+
+    </script>
+</body>
+</html>
